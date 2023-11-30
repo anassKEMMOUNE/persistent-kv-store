@@ -1,0 +1,79 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM Tree API</title>
+</head>
+<body>
+    <h1>LSM Tree API</h1>
+
+    <h2>GET Request</h2>
+    <form id="getForm">
+        <label for="getKey">Key:</label>
+        <input type="text" id="getKey" name="key">
+        <button type="button" onclick="getByKey()">GET</button>
+    </form>
+    <div id="getResult"></div>
+
+    <h2>SET Request</h2>
+    <form id="setForm">
+        <label for="setKey">Key:</label>
+        <input type="text" id="setKey" name="key">
+        <label for="setValue">Value:</label>
+        <input type="text" id="setValue" name="value">
+        <button type="submit" onclick="setKeyValue()">SET</button>
+    </form>
+    <div id="setResult"></div>
+
+    <h2>DELETE Request</h2>
+    <form id="deleteForm">
+        <label for="deleteKey">Key:</label>
+        <input type="text" id="deleteKey" name="key">
+        <button type="button" onclick="deleteByKey()">DELETE</button>
+    </form>
+    <div id="deleteResult"></div>
+
+    <script>
+        function getByKey() {
+            const key = document.getElementById('getKey').value;
+            fetch(`http://localhost:8080/get/${key}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('getResult').innerText = JSON.stringify(data, null, 2);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function setKeyValue() {
+            const key = document.getElementById('setKey').value;
+            const value = document.getElementById('setValue').value;
+            fetch('http://localhost:8080/set', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ key, value })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('setResult').innerText = JSON.stringify(data, null, 2);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function deleteByKey() {
+            const key = document.getElementById('deleteKey').value;
+            fetch(`http://localhost:8080/delete/${key}`, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('deleteResult').innerText = JSON.stringify(data, null, 2);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

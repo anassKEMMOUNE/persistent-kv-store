@@ -1,0 +1,15 @@
+<!-- template.html -->
+<!DOCTYPE html>
+<html>
+<head>
+	<title>LSM Tree HTML</title>
+</head>
+<body>
+	<h1>MemTable Data</h1>
+	<ul>
+		{{range $key, $value := .MemTable}}
+			<li>{{$key}}: {{$value}}</li>
+		{{end}}
+	</ul>
+</body>
+</html>

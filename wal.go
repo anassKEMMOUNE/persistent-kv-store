@@ -1,11 +1,19 @@
 package main
 
-import ("os" 
-"fmt")
+import (
+	"fmt"
+	"os"
+	"strings"
+)
 
 type Wal struct {
 	LogFile *os.File
 	Err     error
+}
+type WalEntry struct {
+	Operation string
+	Key       string
+	Value     string
 }
 
 func openWal() Wal {
@@ -15,24 +23,24 @@ func openWal() Wal {
 	}
 
 	return Wal{
-		LogFile:    logFile,
-		Err: err,
+		LogFile: logFile,
+		Err:     err,
 	}
 }
 
-func (wal *Wal) writeSetWal(key, value string){
+func (wal *Wal) writeSetWal(key, value string) {
 	if _, err := wal.LogFile.WriteString(fmt.Sprintf("SET %s %s\n", key, value)); err != nil {
 		fmt.Println("Error writing to WAL:", err)
 		return
 	}
 }
 
-func (wal *Wal) writeDelWal(key string){
-		// Write to WAL
-		if _, err := wal.LogFile.WriteString(fmt.Sprintf("DELETE %s\n", key)); err != nil {
-			fmt.Println("Error writing to WAL:", err)
-			return
-		}
+func (wal *Wal) writeDelWal(key string) {
+	// Write to WAL
+	if _, err := wal.LogFile.WriteString(fmt.Sprintf("DELETE %s\n", key)); err != nil {
+		fmt.Println("Error writing to WAL:", err)
+		return
+	}
 }
 
 func (wal *Wal) CloseLogFile() {
@@ -40,49 +48,73 @@ func (wal *Wal) CloseLogFile() {
 		fmt.Println("Error closing WAL:", err)
 	}
 }
+func ClearWal()  {
+	err := os.Truncate("wal.log", 0)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
 
+}
 
-// func (mt *MemTable) RecoverFromWAL() {
-// 	mt.mu.Lock()
-// 	defer mt.mu.Unlock()
+func (wal *Wal) IsWalEmpty() bool {
+	// Get file info to check the size
+	fileInfo, err := wal.LogFile.Stat()
+	if err != nil {
+		fmt.Println("Error getting file info:", err)
+		return true
+	}
 
-// 	// Seek to the beginning of the log file
-// 	_, err := mt.logFile.Seek(0, 0)
-// 	if err != nil {
-// 		fmt.Println("Error seeking to the beginning of the log file:", err)
-// 		return
-// 	}
+	// Check if the size of the file is zero
+	return fileInfo.Size() == 0
+}
 
-// 	// Read and replay each entry from the log file
-// 	scanner := bufio.NewScanner(mt.logFile)
-// 	for scanner.Scan() {
-// 		entry := scanner.Text()
-// 		parts := strings.Fields(entry)
+func (wal *Wal) readAllWal() ([]WalEntry, error) {
+	var entries []WalEntry
 
-// 		if len(parts) < 2 {
-// 			fmt.Println("Invalid log entry:", entry)
-// 			continue
-// 		}
+	// Read the entire file into a byte slice
+	content, err := os.ReadFile("wal.log")
+	if err != nil {
+		fmt.Println("Error reading WAL file:", err)
+		return nil, err
+	}
 
-// 		switch parts[0] {
-// 		case "PUT":
-// 			if len(parts) == 3 {
-// 				mt.data[parts[1]] = parts[2]
-// 			} else {
-// 				fmt.Println("Invalid PUT log entry:", entry)
-// 			}
-// 		case "DELETE":
-// 			if len(parts) == 2 {
-// 				delete(mt.data, parts[1])
-// 			} else {
-// 				fmt.Println("Invalid DELETE log entry:", entry)
-// 			}
-// 		default:
-// 			fmt.Println("Unknown log entry:", entry)
-// 		}
-// 	}
+	// Split the content into lines
+	lines := strings.Split(string(content), "\n")
 
-// 	if err := scanner.Err(); err != nil {
-// 		fmt.Println("Error reading log file:", err)
-// 	}
-// }
+	for _, line := range lines {
+		// Skip empty lines
+		if line == "" {
+			continue
+		}
+
+		entry, err := parseWalEntry(line)
+		if err != nil {
+			fmt.Println("Error parsing WAL entry:", err)
+			continue
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+// Helper function to parse a WAL entry from a string
+func parseWalEntry(line string) (WalEntry, error) {
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return WalEntry{}, fmt.Errorf("invalid WAL entry: %s", line)
+	}
+
+	operation := parts[0]
+	key := parts[1]
+	var value string
+	if operation == "SET" && len(parts) >= 3 {
+		value = parts[2]
+	}
+
+	return WalEntry{
+		Operation: operation,
+		Key:       key,
+		Value:     value,
+	}, nil
+}
